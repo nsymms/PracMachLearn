@@ -1,0 +1,57 @@
+---
+title: "Machine Learning Barbell Exercise Activity"
+author: "Neal S"
+output: html_document
+---
+## Abstract
+In this paper we will describe how we used machine learning techniques to
+model a dataset of subjects performing barbell exercises.
+Subjects performed the exercises with
+accelerometers attached to them to record body movements, and were asked to perform
+the exercises both correctly and incorrectly. The dataset contains a
+variable denoting whether or not the exercise was performed correctly.
+Our model will accurately show if the exercise is
+being performed correctly or not based on the accelerometer data.
+
+```{r, cache=TRUE, echo=FALSE}
+library(ggplot2)
+library(data.table)
+trainData <- fread('pml-training.csv')
+testData <- fread('pml-testing.csv')
+set.seed(621)
+
+```
+
+## The Data Set
+
+The dataset 
+
+
+
+
+## The Model
+
+How it is built.
+
+We have to describe our expected out-of-sample error and appropriately
+estimate it with cross-validation.
+
+How I picked which vars to use in the model (PCA?)
+
+
+
+
+
+
+## Prediction Results
+
+
+
+
+
+## Conclusion
+
+
+
+
+
