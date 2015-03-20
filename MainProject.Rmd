@@ -4,34 +4,77 @@ author: "Neal S"
 output: html_document
 ---
 ## Abstract
-In this paper we will describe how we used machine learning techniques to
-model a dataset of subjects performing barbell exercises.
+We describe how we used machine learning techniques to
+model a dataset taken from subjects performing barbell exercises.
 Subjects performed the exercises with
-accelerometers attached to them to record body movements, and were asked to perform
+accelerometers attached to them to record body movements and were asked to perform
 the exercises both correctly and incorrectly. The dataset contains a
 variable denoting whether or not the exercise was performed correctly.
-Our model will accurately show if the exercise is
+Our model predicts, from the testing data, if the exercise is
 being performed correctly or not based on the accelerometer data.
 
 ```{r, cache=TRUE, echo=FALSE}
 library(ggplot2)
 library(data.table)
-trainData <- fread('pml-training.csv')
-testData <- fread('pml-testing.csv')
+trainData <- fread('pml-training.csv', na.strings="")
+testData <- fread('pml-testing.csv', na.strings="")
 set.seed(621)
 
 ```
 
 ## The Data Set
 
-The dataset 
+The dataset contains accelerometer data from a group of subjects performing
+barbell exercises. There are 160 different variables in the training data
+representing all sorts of accelerometer readings as well as the standard
+identification of subject and test run. Most of the data is quite boring
+and doesn't lend itself to visual inspection, so we'll forego any plotting
+that might help us visualize and understand the data. Most importantly,
+however, is the outcome variable
+_classe_ which is categorical and contains values "A" to "E". That
+outcome is what we will train our model to predict.
 
+A visual inspection of the data in tabular form reveals large gaps in
+many of the variables, so some
+pruning might be necessary. Furthermore, it is noted that the test
+dataset has values for only 60 of the original 160 variables.
+Since we have fixed sets of testing and training data,
+we can immediately remove those variables from both sets. They will
+do nothing to help us evaluate (and by extension,
+train) our model. If we were
+given one dataset to partition ourselves into testing and training sets,
+then we would keep any variables that had valid entries for both testing and
+training sets.
 
+```{r prepare}
+good.cols <- (colSums(is.na(testData)) != nrow(testData))
+bad.col.names <- colnames(testData)[!good.cols]
+testData <- testData[, !bad.col.names, with=FALSE]
+trainData <- trainData[, !bad.col.names, with=FALSE]
+```
 
+Fortunately, after removing those 100 columns, both datasets now
+appear to contain
+complete cases. This makes training easier.
 
 ## The Model
 
-How it is built.
+I've chosen a random forest model because it has proven to be reasonably
+accurate when predicting categorical variables.
+
+```{r model}
+fit1 <- randomForest(factor(classe) ~ ., td)
+fit3 <- train(td[,!'classe',with=F], factor(td$classe), method='rf')
+
+
+```
+
+
+how you built your model
+how you used cross validation
+what you think the expected out of sample error is
+why you made the choices you did
+
 
 We have to describe our expected out-of-sample error and appropriately
 estimate it with cross-validation.
