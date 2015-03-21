@@ -1,9 +1,10 @@
 ---
-title: "Machine Learning Barbell Exercise Activity"
+title: "Machine Learning of the Barbell Exercise Activity"
 author: "Neal S"
 output: html_document
 ---
-## Abstract
+### Abstract
+
 We describe how we used machine learning techniques to
 model a dataset taken from subjects performing barbell exercises.
 Subjects performed the exercises with
@@ -13,16 +14,16 @@ variable denoting whether or not the exercise was performed correctly.
 Our model predicts, from the testing data, if the exercise is
 being performed correctly or not based on the accelerometer data.
 
-```{r, cache=TRUE, echo=FALSE}
-library(ggplot2)
-library(data.table)
-trainData <- fread('pml-training.csv', na.strings="")
-testData <- fread('pml-testing.csv', na.strings="")
-set.seed(621)
-
+```{r setup, include=FALSE}
+library(knitr)
+knit_hooks$set(htmlcap = function(before, options, envir) {
+  if(!before) {
+    paste('<p style="margin-left:15%;margin-right:15%;font-style:italic;font-size:9pt;text-align:center;">',options$htmlcap,"</p>",sep="")
+    }
+})
 ```
 
-## The Data Set
+### The Data Set
 
 The dataset contains accelerometer data from a group of subjects performing
 barbell exercises. There are 160 different variables in the training data
@@ -36,7 +37,7 @@ outcome is what we will train our model to predict.
 
 A visual inspection of the data in tabular form reveals large gaps in
 many of the variables, so some
-pruning might be necessary. Furthermore, it is noted that the test
+pruning might be necessary. Furthermore, it is noted that the provided test
 dataset has values for only 60 of the original 160 variables.
 Since we have fixed sets of testing and training data,
 we can immediately remove those variables from both sets. They will
@@ -46,55 +47,108 @@ given one dataset to partition ourselves into testing and training sets,
 then we would keep any variables that had valid entries for both testing and
 training sets.
 
-```{r prepare}
+```{r prepare, message=FALSE}
+library(caret)
+library(randomForest)
+
+# Load the data and remove invalid data columns
+trainData <- read.csv('pml-training.csv', na.strings=c("NA", ""))
+testData <- read.csv('pml-testing.csv', na.strings=c("NA", ""))
+
 good.cols <- (colSums(is.na(testData)) != nrow(testData))
-bad.col.names <- colnames(testData)[!good.cols]
-testData <- testData[, !bad.col.names, with=FALSE]
-trainData <- trainData[, !bad.col.names, with=FALSE]
+
+# Note columns are identical in each except for the last (which has data)
+testData <- testData[, good.cols]
+trainData <- trainData[, good.cols]
 ```
 
 Fortunately, after removing those 100 columns, both datasets now
 appear to contain
-complete cases. This makes training easier.
+complete cases. This makes training easier. Additionally, we noticed that
+the provided test set does not contain the outcome variable. This of course
+makes it unusable to us for testing purposes.
+That particular dataset was designed for some other purpose so we will
+partition the provided _training_ dataset into our own train and test data.
 
-## The Model
+### The Model
 
-I've chosen a random forest model because it has proven to be reasonably
-accurate when predicting categorical variables.
+We've chosen a random forest model because it has proven to be reasonably
+accurate when predicting categorical variables. We partition the dataset
+into 80% training and 20% testing. We've also introduced cross
+validation to give a better estimate of model error. With such a large
+number of samples, cross validation is possible without too much worry
+of over-fitting.
 
 ```{r model}
-fit1 <- randomForest(factor(classe) ~ ., td)
-fit3 <- train(td[,!'classe',with=F], factor(td$classe), method='rf')
+set.seed(621)
 
+# create a partition for train & test
+train.rows <- createDataPartition(y = trainData$classe, p=0.8, list=FALSE)
 
+# re-assign our train & test datasets to the new partitions
+testData <- trainData[-train.rows,]
+trainData <- trainData[train.rows,]
+
+x <- trainData[,8:59]
+y <- trainData$classe
+```
+
+```{r modelRun, eval=FALSE}
+# cross-validation prediction performance of reduced predictors.
+# this takes 9 minutes
+fit.cv <- rfcv(x, factor(y), cv.fold=5)
+print(fit.cv$error.cv)
+
+# this plot shows that 15 variables should be enough
+qplot(fit.cv$n.var, fit.cv$error.cv, log="x", type="o") +
+    geom_line() + ggtitle('Cross Validation Error by Variable Count')
+```
+
+```{r showFit, echo=FALSE}
+# load pre-computed data and produce outputs that should have been
+# done in the previous chunk. That would have taken too long.
+load('modelfit.RData')
+
+print(fit.cv$error.cv)
+```
+
+```{r cvPlot, echo=FALSE, fig.width=4, fig.height=4, fig.align='center', htmlcap="Figure 1: The Cross-Validation error rates plotted against the number of variables to try at each branch of the tree. The plot shows that more than 13 or so variables doesn't affect the output."}
+qplot(fit.cv$n.var, fit.cv$error.cv, log="x", type="o") +
+    geom_line() + ggtitle('Cross Validation Error by Variable Count')
+```
+
+We chose to use 15 variables at each tree split in the final model. This is
+based on the estimated out-of-sample error from our cross-validation
+exercise. It shows that we should have an error rate of around **0.009** for
+15 variables. That value is used as the _mtry_ argument to the _randomForest_
+call to train our model.
+
+```{r train, eval=FALSE}
+# Train the final model. This takes 50 seconds
+fit <- randomForest(x, factor(y), mtry=15)
 ```
 
 
-how you built your model
-how you used cross validation
-what you think the expected out of sample error is
-why you made the choices you did
+### Prediction Results
 
+Below is a matrix of our model's predictive results on our test dataset.
+One can see that it correctly classified almost every sample in
+the testing data set,
+giving it an overall **accuracy greater than 0.99**. That's quite amazing
+but also a bit scary.
+With accuracy that high there is a fear that we may have over-fitted
+our model. However, we re-ran the experiment several times which tells us
+show that overfitting is not
+the case; perhaps this particular problem is just easily classified.
 
-We have to describe our expected out-of-sample error and appropriately
-estimate it with cross-validation.
+```{r results}
+pred <- predict(fit, newdata=testData)
+cf <- confusionMatrix(pred, testData$classe)
+print(cf)
+```
 
-How I picked which vars to use in the model (PCA?)
-
-
-
-
-
-
-## Prediction Results
-
-
-
-
-
-## Conclusion
-
-
-
+### Conclusion
+The random forest methods prove to be quite useful in these types of
+classification problems.
 
 
