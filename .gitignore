@@ -3,3 +3,5 @@
 .RData
 MainProject.html
 MainProject_cache/*
+MainProject_files/*
+train.results.RData
